@@ -1,7 +1,10 @@
-use crate::{
-    model::{ApplicationState, Coffee, UpdateCoffee},
-    response::{CoffeeResponse, MultipleCoffeeResponse, Response, SingleCoffeeResponse},
+use crate::databases::memory_database::MemoryDatabase;
+use crate::models::coffee_model::{Coffee, UpdateCoffee};
+use crate::responses::coffee_response::{
+    CoffeeResponse, MultipleCoffeeResponse, SingleCoffeeResponse,
 };
+use crate::responses::response::Response;
+
 use chrono::prelude::Utc;
 use rocket::{get, http::Status, post, response::status::Custom, serde::json::Json, State};
 use uuid::Uuid;
@@ -15,12 +18,12 @@ pub async fn healthchecker_handler() -> Result<Json<Response>, Status> {
 }
 
 #[get("/coffee?<page>&<limit>")]
-pub async fn get_all_coffees_handler(
+pub fn get_all_coffees_handler(
     page: Option<usize>,
     limit: Option<usize>,
-    data: &State<ApplicationState>,
+    data: &State<MemoryDatabase>,
 ) -> Result<Json<MultipleCoffeeResponse>, Status> {
-    let database = data.coffee_database.lock().unwrap();
+    let database = data.database.lock().unwrap();
 
     let limit = limit.unwrap_or(10);
     let offset = (page.unwrap_or(1) - 1) * limit;
@@ -42,11 +45,11 @@ pub async fn get_all_coffees_handler(
 }
 
 #[get("/coffee/<id>")]
-pub async fn get_coffee_by_id_handler(
+pub fn get_coffee_by_id_handler(
     id: String,
-    data: &State<ApplicationState>,
+    data: &State<MemoryDatabase>,
 ) -> Result<Json<SingleCoffeeResponse>, Custom<Json<Response>>> {
-    let database = data.coffee_database.lock().unwrap();
+    let database = data.database.lock().unwrap();
 
     for coffee in database.iter() {
         if coffee.id == Some(id.to_owned()) {
@@ -58,11 +61,11 @@ pub async fn get_coffee_by_id_handler(
 }
 
 #[post("/coffee", data = "<body>")]
-pub async fn create_coffee_handler(
+pub fn create_coffee_handler(
     mut body: Json<Coffee>,
-    data: &State<ApplicationState>,
+    data: &State<MemoryDatabase>,
 ) -> Result<Json<SingleCoffeeResponse>, Custom<Json<Response>>> {
-    let mut database = data.coffee_database.lock().unwrap();
+    let mut database = data.database.lock().unwrap();
 
     for coffee in database.iter() {
         if coffee.name == body.name {
@@ -87,9 +90,9 @@ pub async fn create_coffee_handler(
 #[delete("/coffee/<id>")]
 pub async fn delete_coffee_handler(
     id: String,
-    data: &State<ApplicationState>,
+    data: &State<MemoryDatabase>,
 ) -> Result<Status, Custom<Json<Response>>> {
-    let mut database = data.coffee_database.lock().unwrap();
+    let mut database = data.database.lock().unwrap();
 
     for coffee in database.iter() {
         if coffee.id == Some(id.clone()) {
@@ -103,12 +106,12 @@ pub async fn delete_coffee_handler(
 }
 
 #[patch("/coffee/<id>", data = "<body>")]
-pub async fn update_coffee_handler(
+pub fn update_coffee_handler(
     id: String,
     body: Json<UpdateCoffee>,
-    data: &State<ApplicationState>,
+    data: &State<MemoryDatabase>,
 ) -> Result<Json<SingleCoffeeResponse>, Custom<Json<Response>>> {
-    let mut database = data.coffee_database.lock().unwrap();
+    let mut database = data.database.lock().unwrap();
 
     for coffee in database.iter_mut() {
         if coffee.id == Some(id.clone()) {

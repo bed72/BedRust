@@ -1,11 +1,7 @@
-use crate::model::Coffee;
-use serde::Serialize;
+use crate::models;
 
-#[derive(Serialize)]
-pub struct Response {
-    pub status: String,
-    pub message: String,
-}
+use models::coffee_model::Coffee;
+use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct CoffeeResponse {
