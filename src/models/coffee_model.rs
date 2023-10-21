@@ -1,17 +1,24 @@
-use chrono::prelude::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use diesel::{
+    pg::Pg,
+    prelude::{Insertable, Queryable, Selectable},
+};
+use serde::Serialize;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Coffee {
-    pub id: Option<String>,
+use crate::schemas::schema::coffees;
+
+#[derive(Insertable)]
+#[diesel(table_name = coffees)]
+#[diesel(check_for_backend(Pg))]
+pub struct CoffeeInsert {
     pub name: String,
     pub price: f64,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct UpdateCoffee {
-    pub name: Option<String>,
-    pub price: Option<f64>,
+#[derive(Queryable, Selectable, Serialize, Clone)]
+#[diesel(table_name = coffees)]
+#[diesel(check_for_backend(Pg))]
+pub struct CoffeeSelectable {
+    pub id: i64,
+    pub name: String,
+    pub price: f64,
 }

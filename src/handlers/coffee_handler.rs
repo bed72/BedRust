@@ -1,13 +1,13 @@
-use crate::databases::memory_database::MemoryDatabase;
-use crate::models::coffee_model::{Coffee, UpdateCoffee};
+use crate::databases::postgres_database::PostgresDatabase;
+use crate::models::coffee_model::{CoffeeInsert, CoffeeSelectable};
 use crate::responses::coffee_response::{
-    CoffeeResponse, MultipleCoffeeResponse, SingleCoffeeResponse,
+    CoffeeRequest, CoffeeResponse, MultipleCoffeeResponse, SingleCoffeeResponse,
 };
 use crate::responses::response::Response;
+use crate::schemas::schema::coffees::dsl::*;
 
-use chrono::prelude::Utc;
-use rocket::{get, http::Status, post, response::status::Custom, serde::json::Json, State};
-use uuid::Uuid;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
+use rocket::{get, http::Status, response::status::Custom, serde::json::Json, State};
 
 #[get("/healthchecker")]
 pub async fn healthchecker_handler() -> Result<Json<Response>, Status> {
@@ -19,74 +19,74 @@ pub async fn healthchecker_handler() -> Result<Json<Response>, Status> {
 
 #[get("/coffee?<page>&<limit>")]
 pub fn get_all_coffees_handler(
-    page: Option<usize>,
-    limit: Option<usize>,
-    data: &State<MemoryDatabase>,
+    page: Option<i64>,
+    limit: Option<i64>,
+    data: &State<PostgresDatabase>,
 ) -> Result<Json<MultipleCoffeeResponse>, Status> {
-    let database = data.database.lock().unwrap();
+    let connection = &mut *data.connection.lock().unwrap();
 
     let limit = limit.unwrap_or(10);
     let offset = (page.unwrap_or(1) - 1) * limit;
 
-    let coffees: Vec<Coffee> = database
-        .clone()
-        .into_iter()
-        .skip(offset)
-        .take(limit)
-        .collect();
+    let value = coffees
+        .limit(limit)
+        .offset(offset)
+        .select(CoffeeSelectable::as_select())
+        .load::<CoffeeSelectable>(connection)
+        .expect("Error");
 
     let response = MultipleCoffeeResponse {
         status: "success".to_string(),
-        results: coffees.len(),
-        data: coffees,
+        results: value.len(),
+        data: value,
     };
 
     Ok(Json(response))
 }
 
-#[get("/coffee/<id>")]
+#[get("/coffee/<identifier>")]
 pub fn get_coffee_by_id_handler(
-    id: String,
-    data: &State<MemoryDatabase>,
+    identifier: i64,
+    data: &State<PostgresDatabase>,
 ) -> Result<Json<SingleCoffeeResponse>, Custom<Json<Response>>> {
-    let database = data.database.lock().unwrap();
+    let connection = &mut *data.connection.lock().unwrap();
 
-    for coffee in database.iter() {
-        if coffee.id == Some(id.to_owned()) {
-            return Ok(success(coffee.clone()));
-        }
+    let value: Vec<CoffeeSelectable> = coffees
+        .filter(id.eq(identifier))
+        .limit(1)
+        .select(CoffeeSelectable::as_select())
+        .load::<CoffeeSelectable>(connection)
+        .expect("Error");
+
+    if value.is_empty() {
+        return Err(failure(Status::NotFound));
     }
 
-    Err(failure(Status::NotFound))
+    Ok(success(value[0].clone()))
 }
 
 #[post("/coffee", data = "<body>")]
 pub fn create_coffee_handler(
-    mut body: Json<Coffee>,
-    data: &State<MemoryDatabase>,
+    body: Json<CoffeeRequest>,
+    data: &State<PostgresDatabase>,
 ) -> Result<Json<SingleCoffeeResponse>, Custom<Json<Response>>> {
-    let mut database = data.database.lock().unwrap();
+    let connection = &mut *data.connection.lock().unwrap();
 
-    for coffee in database.iter() {
-        if coffee.name == body.name {
-            return Err(failure(Status::Conflict));
-        }
-    }
+    let data = body.into_inner();
+    let model = CoffeeInsert {
+        name: data.name,
+        price: data.price,
+    };
 
-    let id = Uuid::new_v4();
-    let date = Utc::now();
+    let value = diesel::insert_into(coffees)
+        .values(&model)
+        .returning(CoffeeSelectable::as_returning())
+        .get_result(connection)
+        .expect("Error");
 
-    body.id = Some(id.to_string());
-    body.created_at = Some(date);
-    body.updated_at = Some(date);
-
-    let coffee = body.to_owned();
-
-    database.push(body.into_inner());
-
-    Ok(success(coffee.into_inner().clone()))
+    Ok(success(value.clone()))
 }
-
+/*
 #[delete("/coffee/<id>")]
 pub async fn delete_coffee_handler(
     id: String,
@@ -115,7 +115,7 @@ pub fn update_coffee_handler(
 
     for coffee in database.iter_mut() {
         if coffee.id == Some(id.clone()) {
-            let date = Utc::now();
+            // let date = Utc::now();
             let name = body.name.to_owned().unwrap_or(coffee.name.to_owned());
             let price = body.price.to_owned().unwrap_or(coffee.price.to_owned());
 
@@ -131,8 +131,8 @@ pub fn update_coffee_handler(
                 } else {
                     coffee.price.to_owned()
                 },
-                created_at: coffee.created_at,
-                updated_at: Some(date),
+                // created_at: coffee.created_at,
+                // updated_at: Some(date),
             };
 
             *coffee = payload;
@@ -143,8 +143,8 @@ pub fn update_coffee_handler(
 
     Err(failure(Status::NotFound))
 }
-
-fn success(coffee: Coffee) -> Json<SingleCoffeeResponse> {
+*/
+fn success(coffee: CoffeeSelectable) -> Json<SingleCoffeeResponse> {
     let response = SingleCoffeeResponse {
         status: "success".to_string(),
         data: CoffeeResponse { coffee },
