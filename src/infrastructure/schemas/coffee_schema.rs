@@ -4,12 +4,12 @@ use diesel::{
 };
 use serde::Serialize;
 
-use crate::schemas::schema::coffees;
+use super::schema::coffees;
 
 #[derive(Insertable)]
 #[diesel(table_name = coffees)]
 #[diesel(check_for_backend(Pg))]
-pub struct CoffeeInsert {
+pub struct CoffeeInSchema {
     pub name: String,
     pub price: f64,
 }
@@ -17,8 +17,10 @@ pub struct CoffeeInsert {
 #[derive(Queryable, Selectable, Serialize, Clone)]
 #[diesel(table_name = coffees)]
 #[diesel(check_for_backend(Pg))]
-pub struct CoffeeSelectable {
-    pub id: i64,
+pub struct CoffeeOutSchema {
+    // pub id: None,
     pub name: String,
     pub price: f64,
+    // pub created_at: Option<DateTime>,
+    // pub updated_at: Option<DateTime>,
 }
