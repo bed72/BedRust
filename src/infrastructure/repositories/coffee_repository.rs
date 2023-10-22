@@ -1,4 +1,4 @@
-use diesel::{RunQueryDsl, SelectableHelper};
+use diesel::{QueryDsl, RunQueryDsl, SelectableHelper};
 
 use crate::domain::entities::coffee_entity::CoffeeEntity;
 use crate::domain::repositories::repository::Repository;
@@ -22,6 +22,22 @@ impl Repository for CoffeeRepository {
 
         Self::to_entity(schema)
     }
+
+    fn get_paginate(&self, page: Option<i64>, limit: Option<i64>) -> Vec<CoffeeEntity> {
+        let connection = &mut PostgresDatabase::connect();
+
+        let limit = limit.unwrap_or(10);
+        let offset = (page.unwrap_or(1) - 1) * limit;
+
+        let schema = coffees
+            .limit(limit)
+            .offset(offset)
+            .select(CoffeeOutSchema::as_select())
+            .load::<CoffeeOutSchema>(connection)
+            .expect("Failure to the paginate Coffees!");
+
+        Self::to_entities(schema)
+    }
 }
 
 impl CoffeeRepository {
@@ -40,5 +56,12 @@ impl CoffeeRepository {
             created_at: None,
             updated_at: None,
         }
+    }
+
+    fn to_entities(schema: Vec<CoffeeOutSchema>) -> Vec<CoffeeEntity> {
+        schema
+            .iter()
+            .map(|element| Self::to_entity(element.clone()))
+            .collect()
     }
 }

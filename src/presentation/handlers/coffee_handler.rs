@@ -1,40 +1,13 @@
-use rocket::{response::status::Custom, serde::json::Json, State};
+use rocket::{http::Status, response::status::Custom, serde::json::Json, State};
 
 use crate::{
     application::models::{
-        coffee_model::{CoffeeInModel, CoffeeOutModel},
+        coffee_model::{CoffeeInModel, CoffeeOutModel, CoffeesOutModel},
         response::Response,
     },
     domain::usecases::use_case::UseCase,
     presentation::container::coffee_container::CoffeeContainer,
 };
-
-// #[get("/coffee?<page>&<limit>")]
-// pub fn get_all_coffees_handler(
-//     page: Option<i64>,
-//     limit: Option<i64>,
-//     data: &State<PostgresDatabase>,
-// ) -> Result<Json<MultipleCoffeeResponse>, Status> {
-//     let connection = &mut *data.connection.lock().unwrap();
-
-//     let limit = limit.unwrap_or(10);
-//     let offset = (page.unwrap_or(1) - 1) * limit;
-
-//     let value = coffees
-//         .limit(limit)
-//         .offset(offset)
-//         .select(CoffeeSelectable::as_select())
-//         .load::<CoffeeSelectable>(connection)
-//         .expect("Error");
-
-//     let response = MultipleCoffeeResponse {
-//         status: "success".to_string(),
-//         results: value.len(),
-//         data: value,
-//     };
-
-//     Ok(Json(response))
-// }
 
 // #[get("/coffee/<identifier>")]
 // pub fn get_coffee_by_id_handler(
@@ -57,12 +30,27 @@ use crate::{
 //     Ok(success(value[0].clone()))
 // }
 
+#[get("/coffee?<page>&<limit>")]
+pub fn get_all_coffees_handler(
+    page: Option<i64>,
+    limit: Option<i64>,
+    data: &State<CoffeeContainer>,
+) -> Result<Json<CoffeesOutModel>, Status> {
+    let response = &data
+        .paginate_use_case
+        .execute(&data.repository, (page, limit));
+
+    Ok(Json(response.to_owned()))
+}
+
 #[post("/coffee", data = "<body>")]
 pub fn create_coffee_handler(
     body: Json<CoffeeInModel>,
     data: &State<CoffeeContainer>,
 ) -> Result<Json<CoffeeOutModel>, Custom<Json<Response>>> {
-    let response = &data.use_case.execute(&data.repository, body.into_inner());
+    let response = &data
+        .create_use_case
+        .execute(&data.repository, body.into_inner());
 
     Ok(Json(response.to_owned()))
 }

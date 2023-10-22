@@ -5,5 +5,5 @@ pub trait Repository {
     fn create(&self, data: CoffeeEntity) -> CoffeeEntity;
     // fn update(&self, id: Uuid, data: CoffeeEntity) -> CoffeeEntity;
     // fn get_by_id(&self, id: Uuid) -> CoffeeEntity;
-    // fn get_paginate(&self, page: Option<i64>, limit: Option<i64>) -> Vec<CoffeeEntity>;
+    fn get_paginate(&self, page: Option<i64>, limit: Option<i64>) -> Vec<CoffeeEntity>;
 }

@@ -6,7 +6,8 @@ mod presentation;
 use presentation::{
     container::coffee_container::CoffeeContainer,
     handlers::{
-        coffee_handler::create_coffee_handler, healthchecker_hsndler::healthchecker_handler,
+        coffee_handler::{create_coffee_handler, get_all_coffees_handler},
+        healthchecker_hsndler::healthchecker_handler,
     },
 };
 
@@ -21,6 +22,7 @@ fn rocket() -> _ {
         routes![
             healthchecker_handler,
             create_coffee_handler,
+            get_all_coffees_handler,
             // update_coffee_handler,
             // delete_coffee_handler,
             // get_all_coffees_handler,
