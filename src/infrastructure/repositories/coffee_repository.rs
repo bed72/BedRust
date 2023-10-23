@@ -50,11 +50,11 @@ impl CoffeeRepository {
 
     fn to_entity(schema: CoffeeOutSchema) -> CoffeeEntity {
         CoffeeEntity {
-            id: None,
+            id: schema.id,
             name: schema.name,
             price: schema.price,
-            created_at: None,
-            updated_at: None,
+            created_at: schema.created_at,
+            updated_at: schema.updated_at,
         }
     }
 
