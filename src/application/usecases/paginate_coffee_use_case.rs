@@ -1,17 +1,19 @@
 use crate::{
     application::models::coffee_model::{CoffeeOutModel, CoffeesOutModel},
     domain::{
-        entities::coffee_entity::CoffeeEntity, repositories::repository::Repository,
+        entities::coffee_entity::CoffeeEntity, repositories::coffee_repository::CoffeeRepository,
         usecases::use_case::UseCase,
     },
 };
+
+use super::to_model;
 
 pub struct PaginateCoffeeUseCase;
 
 impl UseCase<(Option<i64>, Option<i64>), CoffeesOutModel> for PaginateCoffeeUseCase {
     fn execute(
         &self,
-        repository: &impl Repository,
+        repository: &impl CoffeeRepository,
         data: (Option<i64>, Option<i64>),
     ) -> CoffeesOutModel {
         let (page, limit) = data;
@@ -22,20 +24,10 @@ impl UseCase<(Option<i64>, Option<i64>), CoffeesOutModel> for PaginateCoffeeUseC
 }
 
 impl PaginateCoffeeUseCase {
-    fn to_model(entity: CoffeeEntity) -> CoffeeOutModel {
-        CoffeeOutModel {
-            id: entity.id.unwrap_or_default(),
-            name: entity.name,
-            price: entity.price,
-            created_at: entity.created_at.unwrap_or_default(),
-            updated_at: entity.updated_at.unwrap_or_default(),
-        }
-    }
-
     fn to_models(entities: Vec<CoffeeEntity>) -> CoffeesOutModel {
         let coffees: Vec<CoffeeOutModel> = entities
             .iter()
-            .map(|element| Self::to_model(element.clone()))
+            .map(|element| to_model(element.clone()))
             .collect();
 
         CoffeesOutModel {

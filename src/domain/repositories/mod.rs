@@ -1,1 +1,1 @@
-pub mod repository;
+pub mod coffee_repository;

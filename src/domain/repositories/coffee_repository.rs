@@ -1,6 +1,6 @@
 use crate::domain::entities::coffee_entity::CoffeeEntity;
 
-pub trait Repository {
+pub trait CoffeeRepository {
     // fn delete(&self, id: Uuid);
     fn create(&self, data: CoffeeEntity) -> CoffeeEntity;
     // fn update(&self, id: Uuid, data: CoffeeEntity) -> CoffeeEntity;

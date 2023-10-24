@@ -1,16 +1,16 @@
 use diesel::{QueryDsl, RunQueryDsl, SelectableHelper};
 
 use crate::domain::entities::coffee_entity::CoffeeEntity;
-use crate::domain::repositories::repository::Repository;
+use crate::domain::repositories::coffee_repository::CoffeeRepository;
 
 use crate::infrastructure::databases::database::Database;
 use crate::infrastructure::databases::postgres_database::PostgresDatabase;
 use crate::infrastructure::schemas::coffee_schema::{CoffeeInSchema, CoffeeOutSchema};
 use crate::infrastructure::schemas::schema::coffees::dsl::*;
 
-pub struct CoffeeRepository;
+pub struct CoffeeImplRepository;
 
-impl Repository for CoffeeRepository {
+impl CoffeeRepository for CoffeeImplRepository {
     fn create(&self, data: CoffeeEntity) -> CoffeeEntity {
         let connection = &mut PostgresDatabase::connect();
 
@@ -40,7 +40,7 @@ impl Repository for CoffeeRepository {
     }
 }
 
-impl CoffeeRepository {
+impl CoffeeImplRepository {
     fn to_schema(entity: CoffeeEntity) -> CoffeeInSchema {
         CoffeeInSchema {
             name: entity.name,
