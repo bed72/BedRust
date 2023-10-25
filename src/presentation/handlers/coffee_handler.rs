@@ -1,5 +1,6 @@
 use rocket::{http::Status, response::status::Custom, serde::json::Json, State};
 use uuid::Uuid;
+use validator::{Validate, ValidationErrors};
 
 use crate::{
     application::models::{
@@ -58,6 +59,12 @@ pub fn create_coffee_handler(
     body: Json<CoffeeInModel>,
     data: &State<CoffeeContainer>,
 ) -> CoffeeType {
+    let validate = body.clone().into_inner().validate();
+
+    if validate.is_err() {
+        return Err(self::invalid_body(validate));
+    }
+
     let response = data
         .create_use_case
         .execute(&data.repository, body.into_inner());
@@ -74,9 +81,14 @@ pub fn update_coffee_handler(
     data: &State<CoffeeContainer>,
 ) -> CoffeeType {
     let parameter = Uuid::parse_str(&id);
+    let validate = body.clone().into_inner().validate();
 
     if parameter.is_err() {
         return Err(self::invalid_id());
+    }
+
+    if validate.is_err() {
+        return Err(self::invalid_body(validate));
     }
 
     let response = data
@@ -115,4 +127,24 @@ fn invalid_id() -> Custom<Json<ResponseModel<FaiureOutModel>>> {
             },
         }),
     )
+}
+
+fn invalid_body(
+    parameter: Result<(), ValidationErrors>,
+) -> Custom<Json<ResponseModel<FaiureOutModel>>> {
+    let mut message = "Something goes wrong! ".to_string();
+
+    for (_, values) in parameter.err().unwrap().field_errors().iter() {
+        for error in values.iter() {
+            message.push_str(error.message.as_ref().unwrap());
+        }
+    }
+
+    return Custom(
+        Status::UnprocessableEntity,
+        Json(ResponseModel {
+            status: "failure".to_string(),
+            data: FaiureOutModel { message },
+        }),
+    );
 }

@@ -7,15 +7,37 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Cargo test",
+            "name": "Debug 'coffee'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=coffee",
+                    "--package=coffee"
+                ],
+                "filter": {
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Tests 'coffee'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--lib"
-                ]
+                    "--bin=coffee",
+                    "--package=coffee"
+                ],
+                "filter": {
+                    "kind": "bin"
+                }
             },
-            "args": []
+            "args": [],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
