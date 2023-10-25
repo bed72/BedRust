@@ -1,38 +1,43 @@
 use crate::{
-    application::models::coffee_model::{CoffeeOutModel, CoffeesOutModel},
+    application::models::{
+        coffee_model::CoffeeOutModel, response_model::ResponseModel, CoffeesTypeModel,
+    },
     domain::{
         entities::coffee_entity::CoffeeEntity, repositories::coffee_repository::CoffeeRepository,
         usecases::use_case::UseCase,
     },
 };
 
-use super::to_model;
+use super::{to_model, to_model_failure};
 
 pub struct PaginateCoffeeUseCase;
 
-impl UseCase<(Option<i64>, Option<i64>), CoffeesOutModel> for PaginateCoffeeUseCase {
-    fn execute(
-        &self,
-        repository: &impl CoffeeRepository,
-        data: (Option<i64>, Option<i64>),
-    ) -> CoffeesOutModel {
-        let (page, limit) = data;
-        let response = repository.get_paginate(page, limit);
+impl PaginateCoffeeUseCase {
+    fn to_models_success(entities: Vec<CoffeeEntity>) -> ResponseModel<Vec<CoffeeOutModel>> {
+        let mut models: Vec<CoffeeOutModel> = Vec::with_capacity(entities.len());
 
-        Self::to_models(response)
+        for entity in entities {
+            models.push(to_model(entity));
+        }
+
+        ResponseModel {
+            status: "success".to_string(),
+            data: models,
+        }
     }
 }
 
-impl PaginateCoffeeUseCase {
-    fn to_models(entities: Vec<CoffeeEntity>) -> CoffeesOutModel {
-        let coffees: Vec<CoffeeOutModel> = entities
-            .iter()
-            .map(|element| to_model(element.clone()))
-            .collect();
+impl UseCase<(Option<i64>, Option<i64>), CoffeesTypeModel> for PaginateCoffeeUseCase {
+    fn execute(
+        &self,
+        repository: &impl CoffeeRepository,
+        parameter: (Option<i64>, Option<i64>),
+    ) -> CoffeesTypeModel {
+        let (page, limit) = parameter;
+        let response = repository.get_paginate(page, limit);
 
-        CoffeesOutModel {
-            quantity: coffees.len(),
-            coffees,
-        }
+        response
+            .map(Self::to_models_success)
+            .map_err(to_model_failure)
     }
 }

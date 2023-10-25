@@ -16,9 +16,3 @@ pub struct CoffeeOutModel {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
-
-#[derive(Deserialize, Serialize, Clone)]
-pub struct CoffeesOutModel {
-    pub quantity: usize,
-    pub coffees: Vec<CoffeeOutModel>,
-}
