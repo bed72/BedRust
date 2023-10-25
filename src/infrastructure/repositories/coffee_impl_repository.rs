@@ -62,10 +62,10 @@ impl CoffeeRepository for CoffeeImplRepository {
     }
 
     fn get_by_id(&self, identifier: Uuid) -> Result<CoffeeEntity, FailureEntity> {
-        let schema: Result<CoffeeOutSchema, Error> = coffees
-            .filter(id.eq(identifier))
-            .select(CoffeeOutSchema::as_select())
-            .get_result::<CoffeeOutSchema>(&mut Self::connection());
+        let schema: Result<CoffeeOutSchema, Error> =
+            coffees
+                .filter(id.eq(identifier))
+                .get_result::<CoffeeOutSchema>(&mut Self::connection());
 
         schema.map(Self::to_entity).map_err(Self::to_failure)
     }
@@ -92,6 +92,12 @@ impl CoffeeRepository for CoffeeImplRepository {
     }
 
     fn delete(&self, identifier: Uuid) -> Result<usize, FailureEntity> {
+        let coffee = self.get_by_id(identifier);
+
+        if coffee.is_err() {
+            return Err(coffee.err().unwrap());
+        }
+
         let schema: Result<usize, Error> =
             diesel::delete(coffees.filter(id.eq(identifier))).execute(&mut Self::connection());
 
@@ -99,6 +105,12 @@ impl CoffeeRepository for CoffeeImplRepository {
     }
 
     fn update(&self, identifier: Uuid, data: CoffeeEntity) -> Result<CoffeeEntity, FailureEntity> {
+        let coffee = self.get_by_id(identifier);
+
+        if coffee.is_err() {
+            return Err(coffee.err().unwrap());
+        }
+
         let schema: Result<CoffeeOutSchema, Error> =
             diesel::update(coffees.filter(id.eq(identifier)))
                 .set((name.eq(data.name), price.eq(data.price)))
