@@ -17,7 +17,6 @@ extern crate rocket;
 
 #[launch]
 fn rocket() -> _ {
-    let container = CoffeeContainer::INIT;
     let configuration = Config {
         port: 7200,
         temp_dir: "/tmp/coffee".into(),
@@ -25,7 +24,7 @@ fn rocket() -> _ {
     };
 
     rocket::build()
-        .manage(container)
+        .manage(CoffeeContainer::init())
         .mount(
             "/v1/api",
             routes![

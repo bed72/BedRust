@@ -1,6 +1,6 @@
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct FaiureOutModel {
+pub struct FailureOutModel {
     pub message: String,
 }

@@ -1,28 +1,23 @@
-use crate::{
-    application::usecases::{
-        create_coffee_use_case::CreateCoffeeUseCase, delete_coffee_use_case::DeleteCoffeeUseCase,
-        paginate_coffee_use_case::PaginateCoffeeUseCase,
-        search_coffee_use_case::SearchCoffeeUseCase, update_coffee_use_case::UpdateCoffeeUseCase,
-    },
-    infrastructure::repositories::coffee_impl_repository::CoffeeImplRepository,
+use crate::infrastructure::{
+    clients::postgres_client::PostgresClient,
+    repositories::coffee_impl_repository::CoffeeImplRepository,
 };
+use dotenvy::dotenv;
+use std::env;
 
 pub struct CoffeeContainer {
     pub repository: CoffeeImplRepository,
-    pub create_use_case: CreateCoffeeUseCase,
-    pub delete_use_case: DeleteCoffeeUseCase,
-    pub update_use_case: UpdateCoffeeUseCase,
-    pub search_use_case: SearchCoffeeUseCase,
-    pub paginate_use_case: PaginateCoffeeUseCase,
 }
 
 impl CoffeeContainer {
-    pub const INIT: CoffeeContainer = CoffeeContainer {
-        repository: CoffeeImplRepository,
-        create_use_case: CreateCoffeeUseCase,
-        delete_use_case: DeleteCoffeeUseCase,
-        update_use_case: UpdateCoffeeUseCase,
-        search_use_case: SearchCoffeeUseCase,
-        paginate_use_case: PaginateCoffeeUseCase,
-    };
+    pub fn init() -> CoffeeContainer {
+        dotenv().ok();
+
+        let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set.");
+
+        let connection = PostgresClient::init(url);
+        let repository = CoffeeImplRepository::init(connection);
+
+        CoffeeContainer { repository }
+    }
 }

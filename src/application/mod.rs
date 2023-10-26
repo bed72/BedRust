@@ -1,3 +1,2 @@
+pub mod clients;
 pub mod models;
-
-pub mod usecases;

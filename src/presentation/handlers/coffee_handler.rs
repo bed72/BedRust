@@ -5,124 +5,124 @@ use validator::{Validate, ValidationErrors};
 use crate::{
     application::models::{
         coffee_model::{CoffeeInModel, CoffeeOutModel},
-        failure_model::FaiureOutModel,
+        failure_model::FailureOutModel,
         response_model::ResponseModel,
     },
-    domain::usecases::use_case::UseCase,
-    presentation::container::coffee_container::CoffeeContainer,
+    domain::repositories::coffee_repository::CoffeeRepository,
+    presentation::{
+        container::coffee_container::CoffeeContainer,
+        mappers::{
+            coffee_mapper::{coffe_to_entity, coffee_to_response, coffees_to_response},
+            failure_mapper::failure_to_response,
+        },
+    },
 };
 
-type CoffeeDeleteType = Result<Status, Custom<Json<ResponseModel<FaiureOutModel>>>>;
+type CoffeeDeleteType = Result<Status, Custom<Json<ResponseModel<FailureOutModel>>>>;
 type CoffeeType = Result<
     Custom<Json<ResponseModel<CoffeeOutModel>>>,
-    Custom<Json<ResponseModel<FaiureOutModel>>>,
+    Custom<Json<ResponseModel<FailureOutModel>>>,
 >;
 type CoffeePaginatedType = Result<
     Custom<Json<ResponseModel<Vec<CoffeeOutModel>>>>,
-    Custom<Json<ResponseModel<FaiureOutModel>>>,
+    Custom<Json<ResponseModel<FailureOutModel>>>,
 >;
 
 #[get("/coffee/<id>")]
-pub fn get_coffee_by_id_handler(id: String, data: &State<CoffeeContainer>) -> CoffeeType {
+pub fn get_coffee_by_id_handler(id: String, container: &State<CoffeeContainer>) -> CoffeeType {
     let parameter = Uuid::parse_str(&id);
 
     if parameter.is_err() {
-        return Err(self::invalid_id());
+        return Err(invalid_id());
     }
 
-    let response = data
-        .search_use_case
-        .execute(&data.repository, parameter.unwrap());
+    let response = container.repository.get_by_id(parameter.unwrap());
 
     response
-        .map(|success| Custom(Status::Ok, Json(success)))
-        .map_err(|failure| Custom(Status::BadRequest, Json(failure)))
+        .map(|success| coffee_to_response(Status::Ok, success))
+        .map_err(|failure| failure_to_response(Status::BadRequest, failure))
 }
 
 #[get("/coffee?<page>&<limit>")]
 pub fn get_all_coffees_handler(
     page: Option<i64>,
     limit: Option<i64>,
-    data: &State<CoffeeContainer>,
+    container: &State<CoffeeContainer>,
 ) -> CoffeePaginatedType {
-    let response = data
-        .paginate_use_case
-        .execute(&data.repository, (page, limit));
+    let response = container.repository.get_paginate(page, limit);
 
     response
-        .map(|success| Custom(Status::Ok, Json(success)))
-        .map_err(|failure| Custom(Status::BadRequest, Json(failure)))
+        .map(|success| coffees_to_response(Status::Ok, success))
+        .map_err(|failure| failure_to_response(Status::BadRequest, failure))
 }
 
 #[post("/coffee", data = "<body>")]
 pub fn create_coffee_handler(
     body: Json<CoffeeInModel>,
-    data: &State<CoffeeContainer>,
+    container: &State<CoffeeContainer>,
 ) -> CoffeeType {
     let validate = body.clone().into_inner().validate();
 
     if validate.is_err() {
-        return Err(self::invalid_body(validate));
+        return Err(invalid_body(validate));
     }
 
-    let response = data
-        .create_use_case
-        .execute(&data.repository, body.into_inner());
+    let response = container
+        .repository
+        .create(coffe_to_entity(body.into_inner()));
 
     response
-        .map(|success| Custom(Status::Ok, Json(success)))
-        .map_err(|failure| Custom(Status::BadRequest, Json(failure)))
+        .map(|success| coffee_to_response(Status::Ok, success))
+        .map_err(|failure| failure_to_response(Status::BadRequest, failure))
 }
 
 #[patch("/coffee/<id>", data = "<body>")]
 pub fn update_coffee_handler(
     id: String,
     body: Json<CoffeeInModel>,
-    data: &State<CoffeeContainer>,
+    container: &State<CoffeeContainer>,
 ) -> CoffeeType {
     let parameter = Uuid::parse_str(&id);
     let validate = body.clone().into_inner().validate();
 
     if parameter.is_err() {
-        return Err(self::invalid_id());
+        return Err(invalid_id());
     }
 
     if validate.is_err() {
-        return Err(self::invalid_body(validate));
+        return Err(invalid_body(validate));
     }
 
-    let response = data
-        .update_use_case
-        .execute(&data.repository, (parameter.unwrap(), body.into_inner()));
+    let response = container
+        .repository
+        .update(parameter.unwrap(), coffe_to_entity(body.into_inner()));
 
     response
-        .map(|success| Custom(Status::Ok, Json(success)))
-        .map_err(|failure| Custom(Status::BadRequest, Json(failure)))
+        .map(|success| coffee_to_response(Status::Ok, success))
+        .map_err(|failure| failure_to_response(Status::BadRequest, failure))
 }
 
 #[delete("/coffee/<id>")]
-pub fn delete_coffee_handler(id: String, data: &State<CoffeeContainer>) -> CoffeeDeleteType {
+pub fn delete_coffee_handler(id: String, container: &State<CoffeeContainer>) -> CoffeeDeleteType {
     let parameter = Uuid::parse_str(&id);
 
     if parameter.is_err() {
-        return Err(self::invalid_id());
+        return Err(invalid_id());
     }
 
-    let response = data
-        .delete_use_case
-        .execute(&data.repository, parameter.unwrap());
+    let response = container.repository.delete(parameter.unwrap());
 
     response
         .map(|_| Status::NoContent)
-        .map_err(|failure| Custom(Status::BadRequest, Json(failure)))
+        .map_err(|failure| failure_to_response(Status::BadRequest, failure))
 }
 
-fn invalid_id() -> Custom<Json<ResponseModel<FaiureOutModel>>> {
+fn invalid_id() -> Custom<Json<ResponseModel<FailureOutModel>>> {
     Custom(
         Status::NotAcceptable,
         Json(ResponseModel {
             status: "failure".to_string(),
-            data: FaiureOutModel {
+            data: FailureOutModel {
                 message: "Invalid ID.".to_string(),
             },
         }),
@@ -131,7 +131,7 @@ fn invalid_id() -> Custom<Json<ResponseModel<FaiureOutModel>>> {
 
 fn invalid_body(
     parameter: Result<(), ValidationErrors>,
-) -> Custom<Json<ResponseModel<FaiureOutModel>>> {
+) -> Custom<Json<ResponseModel<FailureOutModel>>> {
     let mut message = "Something goes wrong! ".to_string();
 
     for (_, values) in parameter.err().unwrap().field_errors().iter() {
@@ -144,7 +144,7 @@ fn invalid_body(
         Status::UnprocessableEntity,
         Json(ResponseModel {
             status: "failure".to_string(),
-            data: FaiureOutModel { message },
+            data: FailureOutModel { message },
         }),
     );
 }
