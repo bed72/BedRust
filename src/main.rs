@@ -3,37 +3,20 @@ mod domain;
 mod infrastructure;
 mod presentation;
 
+use actix_web::{web, App, HttpServer};
 use presentation::{
-    container::coffee_container::CoffeeContainer,
-    handlers::coffee_handler::{
-        create_coffee_handler, delete_coffee_handler, get_all_coffees_handler,
-        get_coffee_by_id_handler, update_coffee_handler,
-    },
+    handlers::coffee_handler::create_coffee_handler, states::coffee_state::CoffeeState,
 };
-use rocket::Config;
+use std::io::Result;
 
-#[macro_use]
-extern crate rocket;
-
-#[launch]
-fn rocket() -> _ {
-    let configuration = Config {
-        port: 7200,
-        temp_dir: "/tmp/coffee".into(),
-        ..Config::debug_default()
-    };
-
-    rocket::build()
-        .manage(CoffeeContainer::init())
-        .mount(
-            "/v1/api",
-            routes![
-                create_coffee_handler,
-                delete_coffee_handler,
-                update_coffee_handler,
-                get_all_coffees_handler,
-                get_coffee_by_id_handler,
-            ],
-        )
-        .configure(configuration)
+#[actix_web::main]
+async fn main() -> Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .app_data(web::Data::new(CoffeeState::init()))
+            .service(create_coffee_handler)
+    })
+    .bind(("127.0.0.1", 7200))?
+    .run()
+    .await
 }

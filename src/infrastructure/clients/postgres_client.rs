@@ -1,9 +1,7 @@
-use diesel::{pg::PgConnection, r2d2::ConnectionManager};
-use r2d2::Pool;
+use async_trait::async_trait;
+use sqlx::{PgPool, Pool, Postgres};
 
 use crate::application::clients::database_client::DatabaseClient;
-
-type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 pub struct PostgresClient {
     pub url: String,
@@ -15,10 +13,9 @@ impl PostgresClient {
     }
 }
 
-impl DatabaseClient<DbPool> for PostgresClient {
-    fn connect(&self) -> DbPool {
-        let manager = ConnectionManager::<PgConnection>::new(&self.url);
-
-        Pool::new(manager).unwrap()
+#[async_trait(?Send)]
+impl DatabaseClient<Pool<Postgres>> for PostgresClient {
+    async fn connect(&self) -> Pool<Postgres> {
+        PgPool::connect(&self.url).await.unwrap()
     }
 }

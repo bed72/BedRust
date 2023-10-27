@@ -5,19 +5,19 @@ use crate::infrastructure::{
 use dotenvy::dotenv;
 use std::env;
 
-pub struct CoffeeContainer {
+pub struct CoffeeState {
     pub repository: CoffeeImplRepository,
 }
 
-impl CoffeeContainer {
-    pub fn init() -> CoffeeContainer {
+impl CoffeeState {
+    pub fn init() -> CoffeeState {
         dotenv().ok();
 
         let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set.");
 
-        let connection = PostgresClient::init(url);
+        let connection = Box::new(PostgresClient::init(url));
         let repository = CoffeeImplRepository::init(connection);
 
-        CoffeeContainer { repository }
+        CoffeeState { repository }
     }
 }

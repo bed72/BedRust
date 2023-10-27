@@ -1,10 +1,5 @@
-use rocket::{http::Status, response::status::Custom, serde::json::Json};
-
 use crate::{
-    application::models::{
-        coffee_model::{CoffeeInModel, CoffeeOutModel},
-        response_model::ResponseModel,
-    },
+    application::models::coffee_model::{CoffeeInModel, CoffeeOutModel},
     domain::entities::coffee_entity::CoffeeEntity,
 };
 
@@ -28,34 +23,34 @@ pub fn coffee_to_model(entity: CoffeeEntity) -> CoffeeOutModel {
     }
 }
 
-pub fn coffee_to_response(
-    status: Status,
-    entity: CoffeeEntity,
-) -> Custom<Json<ResponseModel<CoffeeOutModel>>> {
-    Custom(
-        status,
-        Json(ResponseModel {
-            status: "success".to_string(),
-            data: coffee_to_model(entity),
-        }),
-    )
-}
+// pub fn coffee_to_response(
+//     status: Status,
+//     entity: CoffeeEntity,
+// ) -> Custom<Json<ResponseModel<CoffeeOutModel>>> {
+//     Custom(
+//         status,
+//         Json(ResponseModel {
+//             status: "success".to_string(),
+//             data: coffee_to_model(entity),
+//         }),
+//     )
+// }
 
-pub fn coffees_to_response(
-    status: Status,
-    entities: Vec<CoffeeEntity>,
-) -> Custom<Json<ResponseModel<Vec<CoffeeOutModel>>>> {
-    let mut data: Vec<CoffeeOutModel> = Vec::with_capacity(entities.len());
+// pub fn coffees_to_response(
+//     status: Status,
+//     entities: Vec<CoffeeEntity>,
+// ) -> Custom<Json<ResponseModel<Vec<CoffeeOutModel>>>> {
+//     let mut data: Vec<CoffeeOutModel> = Vec::with_capacity(entities.len());
 
-    for entity in entities {
-        data.push(coffee_to_model(entity))
-    }
+//     for entity in entities {
+//         data.push(coffee_to_model(entity))
+//     }
 
-    Custom(
-        status,
-        Json(ResponseModel {
-            status: "success".to_string(),
-            data,
-        }),
-    )
-}
+//     Custom(
+//         status,
+//         Json(ResponseModel {
+//             status: "success".to_string(),
+//             data,
+//         }),
+//     )
+// }

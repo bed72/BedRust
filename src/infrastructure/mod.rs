@@ -1,3 +1,2 @@
 pub mod clients;
 pub mod repositories;
-pub mod schemas;
