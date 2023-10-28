@@ -23,6 +23,16 @@ pub fn coffee_to_model(entity: CoffeeEntity) -> CoffeeOutModel {
     }
 }
 
+pub fn coffees_to_model(entities: Vec<CoffeeEntity>) -> Vec<CoffeeOutModel> {
+    let mut data: Vec<CoffeeOutModel> = Vec::with_capacity(entities.len());
+
+    for entity in entities {
+        data.push(coffee_to_model(entity))
+    }
+
+    data
+}
+
 // pub fn coffee_to_response(
 //     status: Status,
 //     entity: CoffeeEntity,
@@ -35,16 +45,6 @@ pub fn coffee_to_model(entity: CoffeeEntity) -> CoffeeOutModel {
 //         }),
 //     )
 // }
-
-// pub fn coffees_to_response(
-//     status: Status,
-//     entities: Vec<CoffeeEntity>,
-// ) -> Custom<Json<ResponseModel<Vec<CoffeeOutModel>>>> {
-//     let mut data: Vec<CoffeeOutModel> = Vec::with_capacity(entities.len());
-
-//     for entity in entities {
-//         data.push(coffee_to_model(entity))
-//     }
 
 //     Custom(
 //         status,

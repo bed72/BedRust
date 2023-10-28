@@ -1,63 +1,56 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 
+use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-    application::models::{
-        coffee_model::{CoffeeInModel, CoffeeOutModel},
-        failure_model::FailureOutModel,
-    },
+    application::models::coffee_model::CoffeeInModel,
     domain::repositories::coffee_repository::CoffeeRepository,
     presentation::{
         mappers::{
-            coffee_mapper::{coffe_to_entity, coffee_to_model},
+            coffee_mapper::{coffe_to_entity, coffee_to_model, coffees_to_model},
             failure_mapper::failure_to_model,
         },
         states::coffee_state::CoffeeState,
     },
 };
 
-// type CoffeeDeleteType = Result<Status, Custom<Json<ResponseModel<FailureOutModel>>>>;
-// type CoffeeType = Result<
-//     Custom<Json<ResponseModel<CoffeeOutModel>>>,
-//     Custom<Json<ResponseModel<FailureOutModel>>>,
-// >;
-// type CoffeePaginatedType = Result<
-//     Custom<Json<ResponseModel<Vec<CoffeeOutModel>>>>,
-//     Custom<Json<ResponseModel<FailureOutModel>>>,
-// >;
+#[get("/v1/api/coffee/<id>")]
+pub async fn get_coffee_by_id_handler(
+    state: web::Data<CoffeeState>,
+    path: web::Path<String>,
+) -> impl Responder {
+    let id = Uuid::parse_str(&path);
 
-// #[get("/coffee/<id>")]
-// pub async fn get_coffee_by_id_handler(
-//     id: String,
-//     container: &State<CoffeeState>,
-// ) -> CoffeeType {
-//     let parameter = Uuid::parse_str(&id);
+    if id.is_err() {
+        return HttpResponse::Conflict().body("Error");
+    }
 
-//     if parameter.is_err() {
-//         return Err(invalid_id());
-//     }
+    let response = state.repository.get_by_id(id.unwrap()).await;
 
-//     let response = container.repository.get_by_id(parameter.unwrap()).await;
+    if response.is_err() {
+        return HttpResponse::NotFound().json(failure_to_model(response.err().unwrap()));
+    }
 
-//     response
-//         .map(|success| coffee_to_response(Status::Ok, success))
-//         .map_err(|failure| failure_to_response(Status::BadRequest, failure))
-// }
+    HttpResponse::Ok().json(coffee_to_model(response.ok().unwrap()))
+}
 
-// #[get("/coffee?<page>&<limit>")]
-// pub async fn get_all_coffees_handler(
-//     page: Option<i64>,
-//     limit: Option<i64>,
-//     container: &State<CoffeeState>,
-// ) -> CoffeePaginatedType {
-//     let response = container.repository.get_paginate(page, limit).await;
+#[get("/v1/api/coffee?<page>&<limit>")]
+pub async fn get_coffees_paginated_handler(
+    state: web::Data<CoffeeState>,
+    page: web::Query<i64>,
+    limit: web::Query<i64>,
+) -> impl Responder {
+    let response = state.repository.get_paginate(page.0, limit.0).await;
 
-//     response
-//         .map(|success| coffees_to_response(Status::Ok, success))
-//         .map_err(|failure| failure_to_response(Status::BadRequest, failure))
-// }
-#[post("/coffee")]
+    if response.is_err() {
+        return HttpResponse::BadRequest().json(failure_to_model(response.err().unwrap()));
+    }
+
+    HttpResponse::Ok().json(coffees_to_model(response.ok().unwrap()))
+}
+
+#[post("/v1/api/coffee")]
 pub async fn create_coffee_handler(
     state: web::Data<CoffeeState>,
     payload: web::Json<CoffeeInModel>,
@@ -73,10 +66,6 @@ pub async fn create_coffee_handler(
         .create(coffe_to_entity(payload.to_owned()))
         .await;
 
-    // response
-    //     .map(|success| HttpResponse::Created().json(coffee_to_model(success)))
-    //     .map_err(|failure| HttpResponse::BadRequest().json(failure_to_model(failure)))
-
     if response.is_err() {
         return HttpResponse::BadRequest().json(failure_to_model(response.err().unwrap()));
     }
@@ -84,79 +73,52 @@ pub async fn create_coffee_handler(
     HttpResponse::Created().json(coffee_to_model(response.ok().unwrap()))
 }
 
-// #[patch("/coffee/<id>", data = "<body>")]
-// pub async fn update_coffee_handler(
-//     id: String,
-//     body: Json<CoffeeInModel>,
-//     container: &State<CoffeeState>,
-// ) -> CoffeeType {
-//     let parameter = Uuid::parse_str(&id);
-//     let validate = body.clone().into_inner().validate();
+#[patch("/v1/api/coffee/<id>")]
+pub async fn update_coffee_handler(
+    state: web::Data<CoffeeState>,
+    path: web::Path<String>,
+    payload: web::Json<CoffeeInModel>,
+) -> impl Responder {
+    let id = Uuid::parse_str(&path);
 
-//     if parameter.is_err() {
-//         return Err(invalid_id());
-//     }
+    if id.is_err() {
+        return HttpResponse::Conflict().body("Error");
+    }
 
-//     if validate.is_err() {
-//         return Err(invalid_body(validate));
-//     }
+    let validate = payload.validate();
 
-//     let response = container
-//         .repository
-//         .update(parameter.unwrap(), coffe_to_entity(body.into_inner()))
-//         .await;
+    if validate.is_err() {
+        return HttpResponse::UnprocessableEntity().body("Error");
+    }
 
-//     response
-//         .map(|success| coffee_to_response(Status::Ok, success))
-//         .map_err(|failure| failure_to_response(Status::BadRequest, failure))
-// }
+    let response = state
+        .repository
+        .update(id.unwrap(), coffe_to_entity(payload.into_inner()))
+        .await;
 
-// #[delete("/coffee/<id>")]
-// pub async fn delete_coffee_handler(
-//     id: String,
-//     container: &State<CoffeeState>,
-// ) -> CoffeeDeleteType {
-//     let parameter = Uuid::parse_str(&id);
+    if response.is_err() {
+        return HttpResponse::BadRequest().json(failure_to_model(response.err().unwrap()));
+    }
 
-//     if parameter.is_err() {
-//         return Err(invalid_id());
-//     }
+    HttpResponse::Ok().json(coffee_to_model(response.ok().unwrap()))
+}
 
-//     let response = container.repository.delete(parameter.unwrap()).await;
+#[delete("/v1/api/coffee/<id>")]
+pub async fn delete_coffee_handler(
+    state: web::Data<CoffeeState>,
+    path: web::Path<String>,
+) -> impl Responder {
+    let id = Uuid::parse_str(&path);
 
-//     response
-//         .map(|_| Status::NoContent)
-//         .map_err(|failure| failure_to_response(Status::BadRequest, failure))
-// }
+    if id.is_err() {
+        return HttpResponse::Conflict().body("Error");
+    }
 
-// fn invalid_id() -> Custom<Json<ResponseModel<FailureOutModel>>> {
-//     Custom(
-//         Status::NotAcceptable,
-//         Json(ResponseModel {
-//             status: "failure".to_string(),
-//             data: FailureOutModel {
-//                 message: "Invalid ID.".to_string(),
-//             },
-//         }),
-//     )
-// }
+    let response = state.repository.delete(id.unwrap()).await;
 
-// fn invalid_body(
-//     parameter: Result<(), ValidationErrors>,
-// ) -> Custom<Json<ResponseModel<FailureOutModel>>> {
-//     let mut message = "Something goes wrong! ".to_string();
+    if response.is_err() {
+        return HttpResponse::BadRequest().json(failure_to_model(response.err().unwrap()));
+    }
 
-//     for (_, values) in parameter.err().unwrap().field_errors().iter() {
-//         for error in values.iter() {
-//             message.push_str(error.message.as_ref().unwrap());
-//         }
-//     }
-
-//     return Custom(
-//         Status::UnprocessableEntity,
-//         Json(ResponseModel {
-//             status: "failure".to_string(),
-//             data: FailureOutModel { message },
-//         }),
-//     );
-// }
+    HttpResponse::NoContent().finish()
+}
