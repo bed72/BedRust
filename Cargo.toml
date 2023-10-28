@@ -14,3 +14,5 @@ validator = { version = "0.16.1", features = ["derive"] }
 sqlx = { version = "0.7.2", features = ["postgres", "runtime-tokio-native-tls", "macros", "chrono", "uuid"] }
 async-trait = "0.1.74"
 actix-web = "4.4.0"
+actix-cors = "0.6.4"
+env_logger = "0.10.0"

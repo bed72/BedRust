@@ -4,7 +4,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-    application::models::coffee_model::CoffeeInModel,
+    application::models::{coffee_model::CoffeeInModel, response_model::PaginatedModel},
     domain::repositories::coffee_repository::CoffeeRepository,
     presentation::{
         mappers::{
@@ -15,11 +15,12 @@ use crate::{
     },
 };
 
-#[get("/v1/api/coffee/<id>")]
-pub async fn get_coffee_by_id_handler(
+#[get("/coffee/{id}")]
+async fn get_coffee_by_id_handler(
     state: web::Data<CoffeeState>,
     path: web::Path<String>,
 ) -> impl Responder {
+    println!("\nBY ID\n");
     let id = Uuid::parse_str(&path);
 
     if id.is_err() {
@@ -35,13 +36,15 @@ pub async fn get_coffee_by_id_handler(
     HttpResponse::Ok().json(coffee_to_model(response.ok().unwrap()))
 }
 
-#[get("/v1/api/coffee?<page>&<limit>")]
-pub async fn get_coffees_paginated_handler(
+#[get("/coffee")]
+async fn get_coffees_paginated_handler(
     state: web::Data<CoffeeState>,
-    page: web::Query<i64>,
-    limit: web::Query<i64>,
+    paginate: web::Query<PaginatedModel>,
 ) -> impl Responder {
-    let response = state.repository.get_paginate(page.0, limit.0).await;
+    let response = state
+        .repository
+        .get_paginate(paginate.page.unwrap_or(1), paginate.limit.unwrap_or(10))
+        .await;
 
     if response.is_err() {
         return HttpResponse::BadRequest().json(failure_to_model(response.err().unwrap()));
@@ -50,8 +53,8 @@ pub async fn get_coffees_paginated_handler(
     HttpResponse::Ok().json(coffees_to_model(response.ok().unwrap()))
 }
 
-#[post("/v1/api/coffee")]
-pub async fn create_coffee_handler(
+#[post("/coffee")]
+async fn create_coffee_handler(
     state: web::Data<CoffeeState>,
     payload: web::Json<CoffeeInModel>,
 ) -> impl Responder {
@@ -73,8 +76,8 @@ pub async fn create_coffee_handler(
     HttpResponse::Created().json(coffee_to_model(response.ok().unwrap()))
 }
 
-#[patch("/v1/api/coffee/<id>")]
-pub async fn update_coffee_handler(
+#[patch("/coffee/{id}")]
+async fn update_coffee_handler(
     state: web::Data<CoffeeState>,
     path: web::Path<String>,
     payload: web::Json<CoffeeInModel>,
@@ -103,8 +106,8 @@ pub async fn update_coffee_handler(
     HttpResponse::Ok().json(coffee_to_model(response.ok().unwrap()))
 }
 
-#[delete("/v1/api/coffee/<id>")]
-pub async fn delete_coffee_handler(
+#[delete("/coffee/{id}")]
+async fn delete_coffee_handler(
     state: web::Data<CoffeeState>,
     path: web::Path<String>,
 ) -> impl Responder {
@@ -121,4 +124,15 @@ pub async fn delete_coffee_handler(
     }
 
     HttpResponse::NoContent().finish()
+}
+
+pub fn coffee_configure(configure: &mut web::ServiceConfig) {
+    let factory = web::scope("/v1/api")
+        .service(create_coffee_handler)
+        .service(delete_coffee_handler)
+        .service(update_coffee_handler)
+        .service(get_coffee_by_id_handler)
+        .service(get_coffees_paginated_handler);
+
+    configure.service(factory);
 }
