@@ -1,10 +1,12 @@
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 
 use uuid::Uuid;
-use validator::Validate;
+use validator::{Validate, ValidationErrors};
 
 use crate::{
-    application::models::{coffee_model::CoffeeInModel, response_model::PaginatedModel},
+    application::models::{
+        coffee_model::CoffeeInModel, failure_model::FailureOutModel, response_model::PaginatedModel,
+    },
     domain::repositories::coffee_repository::CoffeeRepository,
     presentation::{
         mappers::{
@@ -20,11 +22,10 @@ async fn get_coffee_by_id_handler(
     state: web::Data<CoffeeState>,
     path: web::Path<String>,
 ) -> impl Responder {
-    println!("\nBY ID\n");
     let id = Uuid::parse_str(&path);
 
     if id.is_err() {
-        return HttpResponse::Conflict().body("Error");
+        return HttpResponse::Conflict().json(invalid_id());
     }
 
     let response = state.repository.get_by_id(id.unwrap()).await;
@@ -61,7 +62,7 @@ async fn create_coffee_handler(
     let validate = payload.validate();
 
     if validate.is_err() {
-        return HttpResponse::UnprocessableEntity().body("Error");
+        return HttpResponse::UnprocessableEntity().json(invalid_body(validate.err().unwrap()));
     }
 
     let response = state
@@ -85,13 +86,13 @@ async fn update_coffee_handler(
     let id = Uuid::parse_str(&path);
 
     if id.is_err() {
-        return HttpResponse::Conflict().body("Error");
+        return HttpResponse::Conflict().json(invalid_id());
     }
 
     let validate = payload.validate();
 
     if validate.is_err() {
-        return HttpResponse::UnprocessableEntity().body("Error");
+        return HttpResponse::UnprocessableEntity().json(invalid_body(validate.err().unwrap()));
     }
 
     let response = state
@@ -114,7 +115,7 @@ async fn delete_coffee_handler(
     let id = Uuid::parse_str(&path);
 
     if id.is_err() {
-        return HttpResponse::Conflict().body("Error");
+        return HttpResponse::Conflict().json(invalid_id());
     }
 
     let response = state.repository.delete(id.unwrap()).await;
@@ -124,6 +125,24 @@ async fn delete_coffee_handler(
     }
 
     HttpResponse::NoContent().finish()
+}
+
+fn invalid_id() -> FailureOutModel {
+    FailureOutModel {
+        message: "Invalid ID!".to_string(),
+    }
+}
+
+fn invalid_body(error: ValidationErrors) -> FailureOutModel {
+    let mut message = "Something goes wrong! ".to_string();
+
+    for (_, values) in error.field_errors().iter() {
+        for erro in values.iter() {
+            message.push_str(erro.message.as_ref().unwrap());
+        }
+    }
+
+    return FailureOutModel { message };
 }
 
 pub fn coffee_configure(configure: &mut web::ServiceConfig) {
