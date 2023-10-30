@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-#[get("/coffee/{id}")]
+#[get("/{id}")]
 async fn get_coffee_by_id_handler(
     state: web::Data<CoffeeState>,
     path: web::Path<String>,
@@ -30,14 +30,13 @@ async fn get_coffee_by_id_handler(
 
     let response = state.repository.get_by_id(id.unwrap()).await;
 
-    if response.is_err() {
-        return HttpResponse::NotFound().json(failure_to_model(response.err().unwrap()));
+    match response {
+        Ok(success) => HttpResponse::Ok().json(coffee_to_model(success)),
+        Err(failure) => HttpResponse::NotFound().json(failure_to_model(failure)),
     }
-
-    HttpResponse::Ok().json(coffee_to_model(response.ok().unwrap()))
 }
 
-#[get("/coffee")]
+#[get("")]
 async fn get_coffees_paginated_handler(
     state: web::Data<CoffeeState>,
     paginate: web::Query<PaginatedModel>,
@@ -47,14 +46,13 @@ async fn get_coffees_paginated_handler(
         .get_paginate(paginate.page.unwrap_or(1), paginate.limit.unwrap_or(10))
         .await;
 
-    if response.is_err() {
-        return HttpResponse::BadRequest().json(failure_to_model(response.err().unwrap()));
+    match response {
+        Ok(success) => HttpResponse::Ok().json(coffees_to_model(success)),
+        Err(failure) => HttpResponse::BadRequest().json(failure_to_model(failure)),
     }
-
-    HttpResponse::Ok().json(coffees_to_model(response.ok().unwrap()))
 }
 
-#[post("/coffee")]
+#[post("")]
 async fn create_coffee_handler(
     state: web::Data<CoffeeState>,
     payload: web::Json<CoffeeInModel>,
@@ -70,14 +68,13 @@ async fn create_coffee_handler(
         .create(coffe_to_entity(payload.to_owned()))
         .await;
 
-    if response.is_err() {
-        return HttpResponse::BadRequest().json(failure_to_model(response.err().unwrap()));
+    match response {
+        Ok(success) => HttpResponse::Ok().json(coffee_to_model(success)),
+        Err(failure) => HttpResponse::BadRequest().json(failure_to_model(failure)),
     }
-
-    HttpResponse::Created().json(coffee_to_model(response.ok().unwrap()))
 }
 
-#[patch("/coffee/{id}")]
+#[patch("/{id}")]
 async fn update_coffee_handler(
     state: web::Data<CoffeeState>,
     path: web::Path<String>,
@@ -100,14 +97,13 @@ async fn update_coffee_handler(
         .update(id.unwrap(), coffe_to_entity(payload.into_inner()))
         .await;
 
-    if response.is_err() {
-        return HttpResponse::BadRequest().json(failure_to_model(response.err().unwrap()));
+    match response {
+        Ok(success) => HttpResponse::Ok().json(coffee_to_model(success)),
+        Err(failure) => HttpResponse::NotFound().json(failure_to_model(failure)),
     }
-
-    HttpResponse::Ok().json(coffee_to_model(response.ok().unwrap()))
 }
 
-#[delete("/coffee/{id}")]
+#[delete("/{id}")]
 async fn delete_coffee_handler(
     state: web::Data<CoffeeState>,
     path: web::Path<String>,
@@ -120,11 +116,10 @@ async fn delete_coffee_handler(
 
     let response = state.repository.delete(id.unwrap()).await;
 
-    if response.is_err() {
-        return HttpResponse::BadRequest().json(failure_to_model(response.err().unwrap()));
+    match response {
+        Ok(_) => HttpResponse::NoContent().finish(),
+        Err(failure) => HttpResponse::BadRequest().json(failure_to_model(failure)),
     }
-
-    HttpResponse::NoContent().finish()
 }
 
 fn invalid_id() -> FailureOutModel {
@@ -146,7 +141,7 @@ fn invalid_body(error: ValidationErrors) -> FailureOutModel {
 }
 
 pub fn coffee_configure(configure: &mut web::ServiceConfig) {
-    let factory = web::scope("/v1/api")
+    let factory = web::scope("/v1/api/coffee")
         .service(create_coffee_handler)
         .service(delete_coffee_handler)
         .service(update_coffee_handler)
