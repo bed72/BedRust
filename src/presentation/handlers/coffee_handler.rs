@@ -9,17 +9,17 @@ use crate::{
     },
     domain::repositories::coffee_repository::CoffeeRepository,
     presentation::{
+        configuration::coffee_state_configuration::CoffeeStateConfiguration,
         mappers::{
             coffee_mapper::{coffe_to_entity, coffee_to_model, coffees_to_model},
             failure_mapper::failure_to_model,
         },
-        states::coffee_state::CoffeeState,
     },
 };
 
 #[get("/{id}")]
 async fn get_coffee_by_id_handler(
-    state: web::Data<CoffeeState>,
+    state: web::Data<CoffeeStateConfiguration>,
     path: web::Path<String>,
 ) -> impl Responder {
     let id = Uuid::parse_str(&path);
@@ -38,7 +38,7 @@ async fn get_coffee_by_id_handler(
 
 #[get("")]
 async fn get_coffees_paginated_handler(
-    state: web::Data<CoffeeState>,
+    state: web::Data<CoffeeStateConfiguration>,
     paginate: web::Query<PaginatedModel>,
 ) -> impl Responder {
     let response = state
@@ -54,7 +54,7 @@ async fn get_coffees_paginated_handler(
 
 #[post("")]
 async fn create_coffee_handler(
-    state: web::Data<CoffeeState>,
+    state: web::Data<CoffeeStateConfiguration>,
     payload: web::Json<CoffeeInModel>,
 ) -> impl Responder {
     let validate = payload.validate();
@@ -76,7 +76,7 @@ async fn create_coffee_handler(
 
 #[patch("/{id}")]
 async fn update_coffee_handler(
-    state: web::Data<CoffeeState>,
+    state: web::Data<CoffeeStateConfiguration>,
     path: web::Path<String>,
     payload: web::Json<CoffeeInModel>,
 ) -> impl Responder {
@@ -105,7 +105,7 @@ async fn update_coffee_handler(
 
 #[delete("/{id}")]
 async fn delete_coffee_handler(
-    state: web::Data<CoffeeState>,
+    state: web::Data<CoffeeStateConfiguration>,
     path: web::Path<String>,
 ) -> impl Responder {
     let id = Uuid::parse_str(&path);
@@ -140,7 +140,7 @@ fn invalid_body(error: ValidationErrors) -> FailureOutModel {
     return FailureOutModel { message };
 }
 
-pub fn coffee_configure(configure: &mut web::ServiceConfig) {
+pub fn coffee_handler(configure: &mut web::ServiceConfig) {
     let factory = web::scope("/v1/api/coffee")
         .service(create_coffee_handler)
         .service(delete_coffee_handler)

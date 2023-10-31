@@ -5,13 +5,22 @@ mod presentation;
 
 use actix_cors::Cors;
 use actix_web::{http::header, middleware::Logger, web, App, HttpServer};
-use presentation::states::coffee_state::CoffeeState;
+
 use std::io::Result;
 
-use crate::presentation::handlers::coffee_handler::coffee_configure;
+use crate::presentation::{
+    configuration::{
+        coffee_state_configuration::CoffeeStateConfiguration,
+        database_configuration::configure_pool,
+    },
+    handlers::coffee_handler::coffee_handler,
+};
 
 #[actix_web::main]
 async fn main() -> Result<()> {
+    let pool = configure_pool().await;
+    let state = CoffeeStateConfiguration::init(pool);
+
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var("RUST_LOG", "actix_web=info");
     }
@@ -32,8 +41,8 @@ async fn main() -> Result<()> {
             .supports_credentials();
 
         App::new()
-            .app_data(web::Data::new(CoffeeState::init()))
-            .configure(coffee_configure)
+            .app_data(web::Data::new(state.clone()))
+            .configure(coffee_handler)
             .wrap(cors)
             .wrap(Logger::default())
     })

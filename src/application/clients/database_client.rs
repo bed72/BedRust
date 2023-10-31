@@ -1,6 +1,6 @@
-use async_trait::async_trait;
+use sqlx::{Pool, Postgres};
 
-#[async_trait(?Send)]
-pub trait DatabaseClient<T> {
-    async fn connect(&self) -> T;
+#[derive(Debug, Clone)]
+pub struct DatabaseClient {
+    pub pool: Pool<Postgres>,
 }

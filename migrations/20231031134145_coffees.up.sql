@@ -1,4 +1,5 @@
--- Your SQL goes here
+-- Add up migration script here
+-- Add migration script here
 CREATE TABLE coffees (
     id UUID DEFAULT gen_random_uuid(),
     name VARCHAR(32) NOT NULL,

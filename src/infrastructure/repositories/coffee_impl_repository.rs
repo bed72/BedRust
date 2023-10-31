@@ -1,18 +1,19 @@
 use async_trait::async_trait;
 use chrono::Local;
-use sqlx::{types::uuid::Uuid, Error, Pool, Postgres};
+use sqlx::{types::uuid::Uuid, Error};
 
 use crate::application::clients::database_client::DatabaseClient;
 use crate::domain::entities::coffee_entity::CoffeeEntity;
 use crate::domain::entities::faiulure_entity::FailureEntity;
 use crate::domain::repositories::coffee_repository::CoffeeRepository;
 
+#[derive(Debug, Clone)]
 pub struct CoffeeImplRepository {
-    database: Box<dyn DatabaseClient<Pool<Postgres>>>,
+    database: DatabaseClient,
 }
 
 impl CoffeeImplRepository {
-    pub fn init(database: Box<dyn DatabaseClient<Pool<Postgres>>>) -> Self {
+    pub fn init(database: DatabaseClient) -> Self {
         CoffeeImplRepository { database }
     }
 
@@ -26,14 +27,12 @@ impl CoffeeImplRepository {
 #[async_trait(?Send)]
 impl CoffeeRepository for CoffeeImplRepository {
     async fn create(&self, data: CoffeeEntity) -> Result<CoffeeEntity, FailureEntity> {
-        let connection = self.database.connect().await;
-
         let value = sqlx::query!(
                 "INSERT INTO public.coffees (name, price) VALUES($1, $2) RETURNING id, name, price, created_at, updated_at;",
                 data.name,
                 data.price
             )
-                .fetch_one(&connection)
+                .fetch_one(&self.database.pool)
                 .await
                 .map(|data| CoffeeEntity {
                     id: Some(data.id),
@@ -49,13 +48,11 @@ impl CoffeeRepository for CoffeeImplRepository {
     }
 
     async fn get_by_id(&self, identifier: Uuid) -> Result<CoffeeEntity, FailureEntity> {
-        let connection = self.database.connect().await;
-
         let value = sqlx::query!(
             "SELECT id, name, price, created_at, updated_at FROM public.coffees WHERE id = $1;",
             identifier,
         )
-        .fetch_one(&connection)
+        .fetch_one(&self.database.pool)
         .await
         .map(|data| CoffeeEntity {
             id: Some(data.id),
@@ -76,14 +73,13 @@ impl CoffeeRepository for CoffeeImplRepository {
         limit: i64,
     ) -> Result<Vec<CoffeeEntity>, FailureEntity> {
         let offset = (page - 1) * limit;
-        let connection = self.database.connect().await;
 
         let value = sqlx::query!(
             "SELECT id, name, price, created_at, updated_at FROM public.coffees LIMIT $1 OFFSET $2;",
             limit,
             offset,
         )
-            .fetch_all(&connection)
+            .fetch_all(&self.database.pool)
             .await
             .map(|datas| datas
                 .iter()
@@ -104,7 +100,6 @@ impl CoffeeRepository for CoffeeImplRepository {
     }
 
     async fn delete(&self, identifier: Uuid) -> Result<(), FailureEntity> {
-        let connection = self.database.connect().await;
         let coffee = self.get_by_id(identifier).await;
 
         if coffee.is_err() {
@@ -112,7 +107,7 @@ impl CoffeeRepository for CoffeeImplRepository {
         }
 
         let value = sqlx::query!("DELETE FROM public.coffees WHERE id = $1;", identifier)
-            .execute(&connection)
+            .execute(&self.database.pool)
             .await;
 
         value.map(|_| ()).map_err(Self::failure_to_entity)
@@ -123,7 +118,6 @@ impl CoffeeRepository for CoffeeImplRepository {
         identifier: Uuid,
         data: CoffeeEntity,
     ) -> Result<CoffeeEntity, FailureEntity> {
-        let connection = self.database.connect().await;
         let coffee = self.get_by_id(identifier).await;
 
         if coffee.is_err() {
@@ -137,7 +131,7 @@ impl CoffeeRepository for CoffeeImplRepository {
             Local::now(),
             identifier
         )
-            .fetch_one(&connection)
+            .fetch_one(&self.database.pool)
             .await
             .map(|data| CoffeeEntity {
                 id: Some(data.id),
@@ -150,5 +144,30 @@ impl CoffeeRepository for CoffeeImplRepository {
         value
             .map(|success| success)
             .map_err(Self::failure_to_entity)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::Pool;
+    use sqlx::Postgres;
+
+    #[sqlx::test(fixtures("create.coffees.up"))]
+    async fn test_get_paginate(pool: Pool<Postgres>) {
+        let repository = CoffeeImplRepository::init(DatabaseClient { pool });
+
+        let result = repository.get_paginate(1, 10).await;
+
+        assert!(result.is_ok());
+
+        match result {
+            Ok(success) => {
+                assert_eq!(success.len(), 1);
+                assert_eq!(success[0].name, "Good Coffee");
+                assert_eq!(success[0].price, 27.72);
+            }
+            Err(_) => {}
+        }
     }
 }
