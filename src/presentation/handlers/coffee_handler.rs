@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-#[get("/{id}")]
+#[get("/coffee/{id}")]
 async fn get_coffee_by_id_handler(
     state: web::Data<CoffeeStateConfiguration>,
     path: web::Path<String>,
@@ -36,7 +36,7 @@ async fn get_coffee_by_id_handler(
     }
 }
 
-#[get("")]
+#[get("/coffee")]
 async fn get_coffees_paginated_handler(
     state: web::Data<CoffeeStateConfiguration>,
     paginate: web::Query<PaginatedModel>,
@@ -52,7 +52,7 @@ async fn get_coffees_paginated_handler(
     }
 }
 
-#[post("")]
+#[post("/coffee")]
 async fn create_coffee_handler(
     state: web::Data<CoffeeStateConfiguration>,
     payload: web::Json<CoffeeInModel>,
@@ -74,7 +74,7 @@ async fn create_coffee_handler(
     }
 }
 
-#[patch("/{id}")]
+#[patch("/coffee/{id}")]
 async fn update_coffee_handler(
     state: web::Data<CoffeeStateConfiguration>,
     path: web::Path<String>,
@@ -103,7 +103,7 @@ async fn update_coffee_handler(
     }
 }
 
-#[delete("/{id}")]
+#[delete("/coffee/{id}")]
 async fn delete_coffee_handler(
     state: web::Data<CoffeeStateConfiguration>,
     path: web::Path<String>,
@@ -141,7 +141,7 @@ fn invalid_body(error: ValidationErrors) -> FailureOutModel {
 }
 
 pub fn coffee_handler(configure: &mut web::ServiceConfig) {
-    let factory = web::scope("/v1/api/coffee")
+    let factory = web::scope("/v1/api")
         .service(create_coffee_handler)
         .service(delete_coffee_handler)
         .service(update_coffee_handler)
@@ -149,4 +149,30 @@ pub fn coffee_handler(configure: &mut web::ServiceConfig) {
         .service(get_coffees_paginated_handler);
 
     configure.service(factory);
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::presentation::configuration::database_configuration::configure_pool;
+
+    use super::*;
+    use actix_web::{http::StatusCode, test, web, App};
+
+    #[actix_web::test]
+    async fn test_paginate() {
+        let pool = configure_pool().await;
+        let state = CoffeeStateConfiguration::init(pool);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(state))
+                .service(get_coffees_paginated_handler),
+        )
+        .await;
+
+        let request = test::TestRequest::get().uri("/coffee").to_request();
+        let response = test::call_service(&app, request).await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
 }
